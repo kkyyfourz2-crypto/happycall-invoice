@@ -443,6 +443,39 @@ select.td-edit { cursor: pointer; }
           <div class="card-sub">JPG, PNG 파일 · 복합기 스캔 권장 (300dpi)</div>
         </div>
         <div class="card-body">
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem 1.5rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem">
+            <label style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap">👤 배송원 선택</label>
+            <select id="driverSelect" style="flex:1;max-width:200px;padding:8px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;font-family:var(--font-sans);color:var(--text)">
+              <option value="">-- 배송원 선택 --</option>
+              <option value="김경숙">김경숙</option>
+              <option value="김주화">김주화</option>
+              <option value="김현">김현</option>
+              <option value="김호년">김호년</option>
+              <option value="남명현">남명현</option>
+              <option value="남연순">남연순</option>
+              <option value="노상운">노상운</option>
+              <option value="문병실">문병실</option>
+              <option value="박규호">박규호</option>
+              <option value="박용욱">박용욱</option>
+              <option value="안영권">안영권</option>
+              <option value="오승우">오승우</option>
+              <option value="오인성">오인성</option>
+              <option value="원명보">원명보</option>
+              <option value="윤기상">윤기상</option>
+              <option value="윤승소">윤승소</option>
+              <option value="이원근">이원근</option>
+              <option value="이종화">이종화</option>
+              <option value="이진영">이진영</option>
+              <option value="이창만">이창만</option>
+              <option value="전인석">전인석</option>
+              <option value="전창식">전창식</option>
+              <option value="정준서">정준서</option>
+              <option value="최성재">최성재</option>
+              <option value="최용주">최용주</option>
+              <option value="허기석">허기석</option>
+            </select>
+            <span style="font-size:12px;color:var(--text3)">어르신 전표 묶음 올리기 전에 먼저 선택해주세요</span>
+          </div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem">
             <div class="upload-zone" id="uploadZone-월말" style="padding:1.5rem;border-color:#7c3aed">
               <input type="file" accept="image/*" multiple id="fileInput-월말" onchange="handleFiles(this.files,'월말')">
@@ -833,7 +866,8 @@ async function analyzeAll() {
     document.getElementById('progressFill').style.width = Math.round(((i+1)/uploadedFiles.length)*100) + '%';
     try {
       const b64 = await fileToBase64(uploadedFiles[i].file);
-      const items = await callClaude(b64, i, uploadedFiles[i].type);
+      const selectedDriver = document.getElementById('driverSelect').value;
+      const items = await analyzeImage(b64, i, uploadedFiles[i].type, selectedDriver);
       extractedData.push(...items);
     } catch(e) {
       console.error(e);
@@ -866,121 +900,29 @@ function fileToBase64(file) {
   });
 }
 
-async function callVisionAPI(b64) {
-  // Google Vision API로 텍스트 추출
-  const visionUrl = `https://vision.googleapis.com/v1/images:annotate?key=${visionKey}`;
-  const resp = await fetch(visionUrl, {
+async function analyzeImage(b64, fileIdx, forcedPayment, forcedDriver) {
+  const cleanKey = apiKey.trim().replace(/[^\x00-\x7F]/g, '').replace(/\s/g, '');
+  const cleanVision = visionKey.trim().replace(/[^\x00-\x7F]/g, '').replace(/\s/g, '');
+
+  const resp = await fetch('/api/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      requests: [{
-        image: { content: b64 },
-        features: [{ type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 }]
-      }]
+      image: b64,
+      payment_type: forcedPayment || null,
+      forced_driver: forcedDriver || null,
+      anthropic_key: cleanKey,
+      vision_key: cleanVision
     })
   });
+
   const data = await resp.json();
-  if (data.error) throw new Error('Vision API 오류: ' + data.error.message);
-  const text = data.responses[0]?.fullTextAnnotation?.text || '';
-  return text;
-}
+  if (data.error) throw new Error(data.error);
 
-async function callClaude(b64, fileIdx, forcedPayment) {
-  let extractedText = '';
-  
-  // Google Vision으로 텍스트 먼저 추출
-  if (visionKey) {
-    try {
-      extractedText = await callVisionAPI(b64);
-    } catch(e) {
-      console.warn('Vision API 실패, Claude 단독으로 진행:', e.message);
-    }
-  }
-
-  const vendorList = Object.entries(WOLMAL_MAP).map(([k,v]) => `${k}: ${v.aliases.join(', ')}`).join('\n');
-  
-  const visionContext = extractedText ? 
-    `\n\n[Google Vision이 추출한 텍스트 - 이걸 참고해서 정확하게 파싱하세요]\n${extractedText}\n` : '';
-
-  const prompt = `이것은 "해피콜 지하철택배" 배송 전표입니다.${visionContext}
-
-[전표 구조]
-- 상단: 날짜 (20○○년 ○월 ○일)
-- 좌측: 출발지 상호(주소), 도착지 상호(주소)
-- 우측 "기 타( )" 칸: 결제방식이 손글씨로 적혀있음
-- 우측 하단: 배송원 이름(크게 인쇄), 연락처
-
-[결제방식 판단]
-"기 타( )" 칸 손글씨:
-- 월말로 판단: 원말, 웜말, 윌말, 월말, 月末 → "월말"
-- 현금: 현금, 선불, 착불, 후불 → "현금"
-- 계좌: 계좌, 이체, 무통장 → "계좌"
-- 출발지가 월말 수요처면 → "월말"
-- 모르면 → "월말"
-
-[배송원]
-전표 우측에 크게 인쇄된 이름. 성+이름 붙여쓰기.
-연락처 전화번호도 추출해서 배송원 확인에 활용.
-
-[금액]
-운송요금란 숫자. 1000원 단위. 보통 6000~40000원.
-
-[월말 수요처 표준명 매칭]
-출발지와 가장 유사한 수요처로 자동 변환:
-${vendorList}
-
-[비고] Bus, Bus+, 버스, 양손, 케잌 등 추가요금
-
-반드시 순수 JSON 배열만 반환:
-[{
-  "날짜": "2026-03-30",
-  "결제방식": "월말",
-  "수요처": "미니쉬치과",
-  "출발지": "미니쉬치과",
-  "도착지": "이살리는치과 선릉",
-  "가격": 8000,
-  "배송원": "남명현",
-  "배송원전화": "010-4410-0066",
-  "입금자명": "",
-  "비고": "",
-  "uncertain": false
-}]
-
-판독 불가 항목만 uncertain: true. 전표 아니면 [] 반환.`;
-
-  const cleanKey = apiKey.trim().replace(/[^\x00-\x7F]/g, '').replace(/\s/g, '');
-
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': cleanKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      messages: [{ role: 'user', content: [
-        { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
-        { type: 'text', text: prompt }
-      ]}]
-    })
-  });
-  const data = await resp.json();
-  if (data.error) {
-    if (data.error.type === 'authentication_error') throw new Error('Anthropic API 키가 올바르지 않아요.');
-    throw new Error(data.error.message);
-  }
-  const text = data.content.map(c=>c.text||'').join('');
-  const clean = text.replace(/```json|```/g,'').trim();
-  const parsed = JSON.parse(clean);
-  return parsed.map(item => ({
+  return (data.results || []).map(item => ({
     ...item,
     _id: Math.random().toString(36).slice(2),
     _fileIdx: fileIdx,
-    결제방식: forcedPayment || normalizePayment(item.결제방식) || '월말',
-    배송원: matchDriverByPhone(item.배송원전화) || matchDriverByPhone(item.배송원) || item.배송원 || '',
   }));
 }
 
@@ -1253,49 +1195,27 @@ function updateWorkdays(i, val) {
 function calcSalary() { renderSalary(); }
 
 // ===== EXCEL EXPORT: INVOICE =====
-function exportInvoiceExcel() {
-  const wb = XLSX.utils.book_new();
-
-  // 월말 시트
-  const wmData = [['날짜','수요처','출발지','도착지','가격','배송원','비고']];
-  extractedData.filter(d=>d.결제방식==='월말').forEach(d => {
-    const vm = matchVendor(d.수요처, d.출발지);
-    wmData.push([d.날짜, vm.name||d.수요처, d.출발지, d.도착지, parseInt(d.가격)||0, d.배송원, d.비고||'']);
-  });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wmData), '월말');
-
-  // 현금 시트
-  const hkData = [['날짜','출발지','도착지','금액','배송원','비고']];
-  extractedData.filter(d=>d.결제방식==='현금').forEach(d => {
-    hkData.push([d.날짜, d.출발지, d.도착지, parseInt(d.금액)||parseInt(d.가격)||0, d.배송원, d.비고||'']);
-  });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hkData), '현금');
-
-  // 계좌 시트
-  const gjData = [['날짜','출발지','도착지','가격','배송원','확인','입금자명','비고']];
-  extractedData.filter(d=>d.결제방식==='계좌').forEach(d => {
-    gjData.push([d.날짜, d.출발지, d.도착지, parseInt(d.가격)||0, d.배송원, '', d.입금자명||'', d.비고||'']);
-  });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(gjData), '계좌');
-
-  // 집계 시트
-  const drivers = {};
-  extractedData.forEach(d => {
-    const n = d.배송원||''; if (!n) return;
-    if (!drivers[n]) drivers[n] = {월말:{c:0,a:0}, 현금:{c:0,a:0}, 계좌:{c:0,a:0}};
-    const t = d.결제방식;
-    if (drivers[n][t]) { drivers[n][t].c++; drivers[n][t].a += parseInt(d.가격)||parseInt(d.금액)||0; }
-  });
-  const sumData = [['배송원','월말(건)','월말(금액)','현금(건)','현금(금액)','계좌(건)','계좌(금액)','합계(건)','합계(금액)']];
-  Object.entries(drivers).forEach(([name, d]) => {
-    const tc = d.월말.c+d.현금.c+d.계좌.c;
-    const ta = d.월말.a+d.현금.a+d.계좌.a;
-    sumData.push([name, d.월말.c, d.월말.a, d.현금.c, d.현금.a, d.계좌.c, d.계좌.a, tc, ta]);
-  });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sumData), '지하철택배');
-
-  XLSX.writeFile(wb, `해피콜_전표정리_${new Date().toLocaleDateString('ko-KR').replace(/\./g,'').replace(/ /g,'')}.xlsx`);
+async function exportInvoiceExcel() {
+  try {
+    const resp = await fetch('/api/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: extractedData,
+        month: new Date().toLocaleDateString('ko-KR').replace(/\./g,'').replace(/ /g,'')
+      })
+    });
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `해피콜_전표정리_${new Date().toLocaleDateString('ko-KR').replace(/\./g,'').replace(/ /g,'')}.xlsx`;
+    a.click();
+  } catch(e) {
+    showModal('오류', '엑셀 내보내기 실패: ' + e.message);
+  }
 }
+
 
 // ===== EXCEL EXPORT: STATEMENTS =====
 function exportStatements() {
