@@ -443,38 +443,31 @@ select.td-edit { cursor: pointer; }
           <div class="card-sub">JPG, PNG 파일 · 복합기 스캔 권장 (300dpi)</div>
         </div>
         <div class="card-body">
-          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem 1.5rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem">
-            <label style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap">👤 배송원 선택</label>
-            <select id="driverSelect" style="flex:1;max-width:200px;padding:8px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;font-family:var(--font-sans);color:var(--text)">
-              <option value="">-- 배송원 선택 --</option>
-              <option value="김경숙">김경숙</option>
-              <option value="김주화">김주화</option>
-              <option value="김현">김현</option>
-              <option value="김호년">김호년</option>
-              <option value="남명현">남명현</option>
-              <option value="남연순">남연순</option>
-              <option value="노상운">노상운</option>
-              <option value="문병실">문병실</option>
-              <option value="박규호">박규호</option>
-              <option value="박용욱">박용욱</option>
-              <option value="안영권">안영권</option>
-              <option value="오승우">오승우</option>
-              <option value="오인성">오인성</option>
-              <option value="원명보">원명보</option>
-              <option value="윤기상">윤기상</option>
-              <option value="윤승소">윤승소</option>
-              <option value="이원근">이원근</option>
-              <option value="이종화">이종화</option>
-              <option value="이진영">이진영</option>
-              <option value="이창만">이창만</option>
-              <option value="전인석">전인석</option>
-              <option value="전창식">전창식</option>
-              <option value="정준서">정준서</option>
-              <option value="최성재">최성재</option>
-              <option value="최용주">최용주</option>
-              <option value="허기석">허기석</option>
-            </select>
-            <span style="font-size:12px;color:var(--text3)">어르신 전표 묶음 올리기 전에 먼저 선택해주세요</span>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem 1.5rem;margin-bottom:1rem">
+            <div style="display:flex;align-items:center;gap:1rem;margin-bottom:8px">
+              <label style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap">👤 배송원 선택</label>
+              <select id="driverSelect" style="flex:1;max-width:200px;padding:8px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;font-family:var(--font-sans);color:var(--text)">
+                <option value="">-- 배송원 선택 --</option>
+              </select>
+              <span style="font-size:12px;color:var(--text3)">전표 올리기 전에 먼저 선택해주세요</span>
+              <button class="btn btn-sm" onclick="showDriverManager()" style="margin-left:auto;white-space:nowrap">⚙️ 배송원 관리</button>
+            </div>
+          </div>
+
+          <!-- 배송원 관리 모달 -->
+          <div id="driverModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center">
+            <div style="background:white;border-radius:14px;padding:2rem;width:400px;max-height:80vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,0.2)">
+              <div style="font-size:16px;font-weight:700;margin-bottom:16px">⚙️ 지하철택배 배송원 관리</div>
+              <div style="font-size:12px;color:var(--text3);margin-bottom:12px">※ 지하철택배 배송기사만 추가해주세요. 카드배송팀은 별도 관리됩니다.</div>
+              <div id="driverList" style="margin-bottom:1rem"></div>
+              <div style="display:flex;gap:8px">
+                <input id="newDriverInput" type="text" placeholder="새 배송원 이름 입력" style="flex:1;padding:8px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;font-family:var(--font-sans)">
+                <button class="btn btn-primary btn-sm" onclick="addDriver()">추가</button>
+              </div>
+              <div style="margin-top:1rem;text-align:right">
+                <button class="btn btn-primary" onclick="saveDrivers()">저장 완료</button>
+              </div>
+            </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem">
             <div class="upload-zone" id="uploadZone-월말" style="padding:1.5rem;border-color:#7c3aed">
@@ -1325,6 +1318,74 @@ function showNotif(msg, type='info') {
   // simple alert fallback
   console.log(msg);
 }
+
+// ===== 배송원 관리 =====
+const DEFAULT_SUBWAY_DRIVERS = [
+  '김주화','김현','김호년','남명현','남연순','노상운',
+  '박규호','안영권','원명보','윤기상','윤승소','이원근',
+  '이창만','전창식','최성재','허기석'
+];
+
+function loadDrivers() {
+  const saved = localStorage.getItem('hc_drivers');
+  return saved ? JSON.parse(saved) : [...DEFAULT_SUBWAY_DRIVERS];
+}
+
+function saveDriversToStorage(drivers) {
+  localStorage.setItem('hc_drivers', JSON.stringify(drivers));
+}
+
+function renderDriverSelect() {
+  const drivers = loadDrivers();
+  const sel = document.getElementById('driverSelect');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">-- 배송원 선택 --</option>';
+  drivers.sort().forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d; opt.textContent = d;
+    if (d === current) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function showDriverManager() {
+  const drivers = loadDrivers();
+  const list = document.getElementById('driverList');
+  list.innerHTML = drivers.sort().map(d => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--border-tertiary)">
+      <span style="flex:1;font-size:13px">${d}</span>
+      <button onclick="removeDriver('${d}')" style="padding:3px 8px;border:1px solid var(--red);border-radius:5px;background:none;color:var(--red);cursor:pointer;font-size:11px">삭제</button>
+    </div>
+  `).join('');
+  document.getElementById('driverModal').style.display = 'flex';
+}
+
+function removeDriver(name) {
+  const drivers = loadDrivers().filter(d => d !== name);
+  saveDriversToStorage(drivers);
+  showDriverManager();
+}
+
+function addDriver() {
+  const input = document.getElementById('newDriverInput');
+  const name = input.value.trim();
+  if (!name) return;
+  const drivers = loadDrivers();
+  if (!drivers.includes(name)) {
+    drivers.push(name);
+    saveDriversToStorage(drivers);
+  }
+  input.value = '';
+  showDriverManager();
+}
+
+function saveDrivers() {
+  document.getElementById('driverModal').style.display = 'none';
+  renderDriverSelect();
+}
+
+// 초기 로드
+renderDriverSelect();
 
 // Drag & drop
 ['월말','현금','계좌'].forEach(type => {
