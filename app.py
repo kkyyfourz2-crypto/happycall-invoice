@@ -98,6 +98,7 @@ def analyze():
     data = request.json
     b64 = data.get('image')
     forced_payment = data.get('payment_type')
+    forced_driver = data.get('forced_driver')
     anthropic_key = data.get('anthropic_key')
     vision_key = data.get('vision_key')
 
@@ -186,7 +187,7 @@ def analyze():
             # 결제방식 강제 설정
             payment = forced_payment or normalize_payment(item.get('결제방식')) or '월말'
             # 배송원 전화번호로 매칭
-            driver = match_driver_by_phone(item.get('배송원전화')) or item.get('배송원', '')
+            driver = forced_driver or match_driver_by_phone(item.get('배송원전화')) or item.get('배송원', '')
             # 수요처 표준명 매칭
             vm = match_vendor(item.get('수요처', ''), item.get('출발지', ''))
 
