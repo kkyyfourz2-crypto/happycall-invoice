@@ -852,7 +852,7 @@ async function analyzeAll() {
   btn.disabled = true;
   btn.textContent = '🤖 AI 인식 중...';
   document.getElementById('progressBar').style.display = 'block';
-  extractedData = [];
+
 
   for (let i = 0; i < uploadedFiles.length; i++) {
     document.getElementById('statusMsg').textContent = `(${i+1}/${uploadedFiles.length}) ${uploadedFiles[i].name} 인식 중...`;
