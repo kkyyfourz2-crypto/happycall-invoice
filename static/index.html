@@ -970,21 +970,35 @@ function renderTable(type) {
     if (type === '월말') {
       const vm = matchVendor(d.수요처, d.출발지);
       const vendorCls = (!vm.confident && !d.수요처) ? ' class="td-red"' : '';
-      return `<tr>
+      // 날짜 자동교정: 2026년 전표인데 연도가 다르면 교정
+      let fixedDate = d.날짜 || '';
+      if (fixedDate && !fixedDate.startsWith('2026')) {
+        fixedDate = fixedDate.replace(/^20\d\d/, '2026');
+        if (d.날짜 !== fixedDate) updateField(d._id, '날짜', fixedDate);
+      }
+      const zeroAmt = amt === 0;
+      const amtCls = zeroAmt ? ' class="td-red"' : '';
+      return `<tr${zeroAmt ? ' style="background:var(--red-light)"' : ''}>
         <td style="color:var(--text3)">${i+1}</td>
-        <td><input class="td-edit" value="${d.날짜||''}" onchange="updateField('${d._id}','날짜',this.value)" style="width:95px"${cls}></td>
+        <td><input class="td-edit" value="${fixedDate}" onchange="updateField('${d._id}','날짜',this.value)" style="width:95px"${cls}></td>
         <td><input class="td-edit" value="${vm.name||d.수요처||''}" onchange="updateField('${d._id}','수요처',this.value)" style="width:130px"${vendorCls}></td>
         <td><input class="td-edit" value="${d.출발지||''}" onchange="updateField('${d._id}','출발지',this.value)" style="width:130px"${cls}></td>
         <td><input class="td-edit" value="${d.도착지||''}" onchange="updateField('${d._id}','도착지',this.value)" style="width:130px"${cls}></td>
-        <td><input class="td-edit" value="${amt.toLocaleString()}" onchange="updateField('${d._id}','가격',parseInt(this.value.replace(/,/g,'')))" style="width:70px;text-align:right"${unc?' class="td-red"':''}></td>
+        <td><input class="td-edit" value="${amt === 0 ? '' : amt.toLocaleString()}" onchange="updateField('${d._id}','가격',parseInt(this.value.replace(/,/g,'')))" style="width:70px;text-align:right" placeholder="${zeroAmt ? '확인필요!' : ''}"${amtCls}></td>
         <td><input class="td-edit" value="${d.배송원||''}" onchange="updateField('${d._id}','배송원',this.value)" style="width:70px"${unc?' class="td-red"':''}></td>
         <td><input class="td-edit" value="${d.비고||''}" onchange="updateField('${d._id}','비고',this.value)" style="width:80px"></td>
         <td><button class="btn btn-sm" style="padding:3px 8px;font-size:11px;color:var(--red);border-color:var(--red)" onclick="deleteRow('${d._id}')">✕</button></td>
       </tr>`;
     } else if (type === '현금') {
-      return `<tr>
+      let fixedDate2 = d.날짜 || '';
+      if (fixedDate2 && !fixedDate2.startsWith('2026')) {
+        fixedDate2 = fixedDate2.replace(/^20\d\d/, '2026');
+        if (d.날짜 !== fixedDate2) updateField(d._id, '날짜', fixedDate2);
+      }
+      const zeroAmt2 = amt === 0;
+      return `<tr${zeroAmt2 ? ' style="background:var(--red-light)"' : ''}>
         <td style="color:var(--text3)">${i+1}</td>
-        <td><input class="td-edit" value="${d.날짜||''}" onchange="updateField('${d._id}','날짜',this.value)" style="width:95px"${cls}></td>
+        <td><input class="td-edit" value="${fixedDate2}" onchange="updateField('${d._id}','날짜',this.value)" style="width:95px"${cls}></td>
         <td><input class="td-edit" value="${d.출발지||''}" onchange="updateField('${d._id}','출발지',this.value)" style="width:120px"${cls}></td>
         <td><input class="td-edit" value="${d.도착지||''}" onchange="updateField('${d._id}','도착지',this.value)" style="width:130px"${cls}></td>
         <td><input class="td-edit" value="${amt.toLocaleString()}" onchange="updateField('${d._id}','금액',parseInt(this.value.replace(/,/g,'')))" style="width:70px;text-align:right"${unc?' class="td-red"':''}></td>
