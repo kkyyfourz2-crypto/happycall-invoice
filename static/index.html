@@ -878,7 +878,7 @@ async function analyzeAll() {
   document.getElementById('progressBar').style.display = 'none';
   document.getElementById('statusMsg').textContent = `✓ 완료! 총 ${extractedData.length}건 인식됨`;
   btn.disabled = false;
-  btn.textContent = '🤖 재인식';
+  btn.textContent = '🤖 추가인식';
   document.getElementById('badge-review').textContent = extractedData.length;
   updateSidebar();
   showPanel('review');
