@@ -326,3 +326,39 @@ def export_excel():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
+# ===== 배송앱 API =====
+import json as json_module
+
+DELIVERIES_FILE = 'deliveries.json'
+
+def load_deliveries():
+    try:
+        with open(DELIVERIES_FILE, 'r', encoding='utf-8') as f:
+            return json_module.load(f)
+    except:
+        return []
+
+def save_deliveries(data):
+    with open(DELIVERIES_FILE, 'w', encoding='utf-8') as f:
+        json_module.dump(data, f, ensure_ascii=False, indent=2)
+
+@app.route('/api/delivery', methods=['POST'])
+def add_delivery():
+    data = request.json
+    deliveries = load_deliveries()
+    deliveries.append(data)
+    save_deliveries(deliveries)
+    return jsonify({'success': True})
+
+@app.route('/api/deliveries', methods=['GET'])
+def get_deliveries():
+    return jsonify(load_deliveries())
+
+@app.route('/driver')
+def driver_app():
+    return send_file('static/driver_app.html')
+
+@app.route('/admin')
+def admin_app():
+    return send_file('static/admin_app.html')
