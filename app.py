@@ -328,20 +328,20 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', port=port)
 
 # ===== 배송앱 API =====
-import json as json_module
+
 
 DELIVERIES_FILE = 'deliveries.json'
 
 def load_deliveries():
     try:
         with open(DELIVERIES_FILE, 'r', encoding='utf-8') as f:
-            return json_module.load(f)
+            return json.load(f)
     except:
         return []
 
 def save_deliveries(data):
     with open(DELIVERIES_FILE, 'w', encoding='utf-8') as f:
-        json_module.dump(data, f, ensure_ascii=False, indent=2)
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 @app.route('/api/delivery', methods=['POST'])
 def add_delivery():
