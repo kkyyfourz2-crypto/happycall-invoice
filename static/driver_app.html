@@ -445,29 +445,42 @@ function parseDepartInfo() {
   document.getElementById('parsedInfo').style.display = 'block';
 }
 
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent);
+}
+
 function openKakaoMap() {
   const arrive = document.getElementById('arriveAddr').value.trim();
   if (!arrive) { alert('도착지 주소를 먼저 입력해주세요!'); return; }
-  // 카카오맵 앱으로 목적지 검색
-  const appUrl = `kakaomap://look?p=${encodeURIComponent(arrive)}`;
-  const webUrl = `https://map.kakao.com/link/search/${encodeURIComponent(arrive)}`;
-  // 앱 시도 후 웹으로 fallback
-  const link = document.createElement('a');
-  link.href = appUrl;
-  link.click();
-  setTimeout(() => { window.location.href = webUrl; }, 1500);
+  
+  const webUrl = 'https://map.kakao.com/link/search/' + encodeURIComponent(arrive);
+  
+  if (isIOS()) {
+    // 아이폰: 웹으로 열기
+    window.open(webUrl, '_blank');
+  } else {
+    // 안드로이드: 앱으로 열기, 없으면 웹으로
+    const appUrl = 'kakaomap://search?q=' + encodeURIComponent(arrive);
+    window.location.href = appUrl;
+    setTimeout(() => { window.open(webUrl, '_blank'); }, 1500);
+  }
 }
 
 function openNaverMap() {
   const arrive = document.getElementById('arriveAddr').value.trim();
   if (!arrive) { alert('도착지 주소를 먼저 입력해주세요!'); return; }
-  // 네이버지도 앱으로 목적지 검색
-  const appUrl = `nmap://search?query=${encodeURIComponent(arrive)}&appname=com.happycall.delivery`;
-  const webUrl = `https://map.naver.com/p/search/${encodeURIComponent(arrive)}`;
-  const link = document.createElement('a');
-  link.href = appUrl;
-  link.click();
-  setTimeout(() => { window.location.href = webUrl; }, 1500);
+  
+  const webUrl = 'https://map.naver.com/p/search/' + encodeURIComponent(arrive);
+  
+  if (isIOS()) {
+    // 아이폰: 웹으로 열기
+    window.open(webUrl, '_blank');
+  } else {
+    // 안드로이드: 앱으로 열기, 없으면 웹으로
+    const appUrl = 'nmap://search?query=' + encodeURIComponent(arrive) + '&appname=com.happycall';
+    window.location.href = appUrl;
+    setTimeout(() => { window.open(webUrl, '_blank'); }, 1500);
+  }
 }
 
 function showCompleteModal() {
