@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>해피콜 관리자</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans KR', sans-serif; background: #f0f2f5; color: #1a1f2e; font-size: 14px; }
+
+.header {
+  background: #1a1f2e; color: white;
+  padding: 0 2rem; height: 56px;
+  display: flex; align-items: center; gap: 12px;
+  position: sticky; top: 0; z-index: 100;
+}
+.header-title { font-size: 17px; font-weight: 700; }
+
+.layout { display: flex; min-height: calc(100vh - 56px); }
+
+.sidebar {
+  width: 220px; background: white;
+  border-right: 1px solid #e2e6ea;
+  padding: 1.5rem 0; flex-shrink: 0;
+  position: sticky; top: 56px;
+  height: calc(100vh - 56px); overflow-y: auto;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; cursor: pointer;
+  font-size: 13px; color: #5a6475;
+  transition: all 0.15s; margin: 2px 8px;
+  border-radius: 8px;
+}
+.nav-item:hover { background: #f0f2f5; }
+.nav-item.active { background: #eff6ff; color: #2563eb; font-weight: 600; }
+
+.content { flex: 1; padding: 2rem; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+.card {
+  background: white; border: 1px solid #e2e6ea;
+  border-radius: 12px; margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.card-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e2e6ea;
+  display: flex; align-items: center; gap: 10px;
+}
+.card-title { font-size: 15px; font-weight: 700; }
+.card-body { padding: 1.5rem; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+.stat-card {
+  background: white; border: 1px solid #e2e6ea;
+  border-radius: 10px; padding: 1.25rem;
+}
+.stat-label { font-size: 11px; color: #9aa3b2; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.stat-value { font-size: 24px; font-weight: 700; }
+.stat-sub { font-size: 12px; color: #9aa3b2; margin-top: 4px; }
+.blue .stat-value { color: #2563eb; }
+.green .stat-value { color: #059669; }
+.amber .stat-value { color: #d97706; }
+.purple .stat-value { color: #7c3aed; }
+
+.btn {
+  padding: 9px 18px; border-radius: 8px;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; border: 1px solid #e2e6ea;
+  background: white; color: #1a1f2e;
+  transition: all 0.15s; display: inline-flex;
+  align-items: center; gap: 6px;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.btn:hover { background: #f0f2f5; }
+.btn-primary { background: #2563eb; color: white; border-color: #2563eb; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-green { background: #059669; color: white; border-color: #059669; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 1rem; }
+
+.tbl-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid #e2e6ea; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead th {
+  background: #f8f9fb; padding: 9px 12px;
+  text-align: left; font-weight: 600; color: #5a6475;
+  border-bottom: 1px solid #e2e6ea;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px;
+}
+tbody td { padding: 9px 12px; border-bottom: 1px solid #e2e6ea; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: #f8f9fb; }
+
+.chip { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.chip-월말 { background: #e0e7ff; color: #3730a3; }
+.chip-현금 { background: #d1fae5; color: #065f46; }
+.chip-계좌 { background: #dbeafe; color: #1e40af; }
+.chip-지하철 { background: #dbeafe; color: #1e40af; }
+.chip-카드 { background: #fce7f3; color: #9d174d; }
+
+.period-selector { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; }
+.period-selector select { padding: 8px 12px; border: 1px solid #e2e6ea; border-radius: 8px; font-size: 13px; }
+
+/* PIN */
+.pin-overlay {
+  position: fixed; inset: 0; background: #1a1f2e;
+  z-index: 9999; display: flex; align-items: center; justify-content: center;
+}
+.pin-box { text-align: center; color: white; }
+.pin-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+.pin-sub { font-size: 14px; color: rgba(255,255,255,0.5); margin-bottom: 32px; }
+.pin-dots { display: flex; gap: 12px; justify-content: center; margin-bottom: 32px; }
+.pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.4); }
+.pin-dot.filled { background: white; border-color: white; }
+.pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-width: 240px; }
+.pin-btn {
+  padding: 20px; border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  border: none; color: white; font-size: 20px; font-weight: 600;
+  cursor: pointer; font-family: 'Noto Sans KR', sans-serif;
+  transition: all 0.15s;
+}
+.pin-btn:active { background: rgba(255,255,255,0.3); }
+
+.upload-zone {
+  border: 2px dashed #e2e6ea; border-radius: 10px;
+  padding: 2rem; text-align: center; cursor: pointer;
+  transition: all 0.2s; position: relative; background: #f8f9fb;
+}
+.upload-zone:hover { border-color: #2563eb; background: #eff6ff; }
+.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+</style>
+</head>
+<body>
+
+<!-- PIN OVERLAY -->
+<div class="pin-overlay" id="pinOverlay">
+  <div class="pin-box">
+    <div style="font-size:40px;margin-bottom:16px">🔐</div>
+    <div class="pin-title">관리자 로그인</div>
+    <div class="pin-sub">PIN 4자리를 입력해주세요</div>
+    <div class="pin-dots">
+      <div class="pin-dot" id="dot0"></div>
+      <div class="pin-dot" id="dot1"></div>
+      <div class="pin-dot" id="dot2"></div>
+      <div class="pin-dot" id="dot3"></div>
+    </div>
+    <div class="pin-pad">
+      <button class="pin-btn" onclick="pinInput(1)">1</button>
+      <button class="pin-btn" onclick="pinInput(2)">2</button>
+      <button class="pin-btn" onclick="pinInput(3)">3</button>
+      <button class="pin-btn" onclick="pinInput(4)">4</button>
+      <button class="pin-btn" onclick="pinInput(5)">5</button>
+      <button class="pin-btn" onclick="pinInput(6)">6</button>
+      <button class="pin-btn" onclick="pinInput(7)">7</button>
+      <button class="pin-btn" onclick="pinInput(8)">8</button>
+      <button class="pin-btn" onclick="pinInput(9)">9</button>
+      <button class="pin-btn" onclick="pinClear()" style="font-size:14px">지우기</button>
+      <button class="pin-btn" onclick="pinInput(0)">0</button>
+      <button class="pin-btn" onclick="pinClear(true)" style="font-size:14px">←</button>
+    </div>
+    <div id="pinError" style="color:#f87171;margin-top:16px;font-size:13px;height:20px"></div>
+  </div>
+</div>
+
+<div class="header">
+  <div>🚇</div>
+  <div class="header-title">해피콜 관리자</div>
+  <div style="margin-left:auto;font-size:12px;color:rgba(255,255,255,0.5)" id="periodLabel"></div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div style="padding:0 8px">
+      <div class="nav-item active" onclick="showPanel('dashboard')">📊 대시보드</div>
+      <div class="nav-item" onclick="showPanel('deliveries')">📦 배송 현황</div>
+      <div class="nav-item" onclick="showPanel('salary')">💰 급여 집계</div>
+      <div class="nav-item" onclick="showPanel('statement')">📄 거래명세서</div>
+      <div class="nav-item" onclick="showPanel('payroll')">📋 지급대장</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="panel active" id="panel-dashboard">
+      <div class="period-selector">
+        <span style="font-weight:600">정산 기간:</span>
+        <select id="periodSelect" onchange="loadDashboard()">
+          <option value="current">이번달 (21일~20일)</option>
+          <option value="prev">지난달</option>
+        </select>
+        <span id="periodRange" style="font-size:12px;color:#9aa3b2"></span>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card blue">
+          <div class="stat-label">전체 배송건수</div>
+          <div class="stat-value" id="stat-total">0</div>
+          <div class="stat-sub">건</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">총 매출</div>
+          <div class="stat-value" id="stat-revenue">0</div>
+          <div class="stat-sub">원</div>
+        </div>
+        <div class="stat-card amber">
+          <div class="stat-label">월말</div>
+          <div class="stat-value" id="stat-wolmal">0</div>
+          <div class="stat-sub" id="stat-wolmal-amt">0원</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-label">현금+계좌</div>
+          <div class="stat-value" id="stat-cash">0</div>
+          <div class="stat-sub" id="stat-cash-amt">0원</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">👤 배송원별 현황</div></div>
+        <div class="card-body" style="padding:0">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>배송원</th><th>건수</th><th>월말</th><th>현금</th><th>계좌</th><th>총금액</th>
+              </tr></thead>
+              <tbody id="dashboard-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DELIVERIES -->
+    <div class="panel" id="panel-deliveries">
+      <div class="card">
+        <div class="card-header"><div class="card-title">📦 전체 배송 현황</div></div>
+        <div class="card-body" style="padding:0">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>날짜</th><th>배송원</th><th>수요처</th><th>도착지</th>
+                <th>금액</th><th>결제방식</th><th>비고</th>
+              </tr></thead>
+              <tbody id="deliveries-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SALARY -->
+    <div class="panel" id="panel-salary">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">💰 급여 집계</div>
+        </div>
+        <div class="card-body">
+          <div style="font-size:13px;color:#5a6475;margin-bottom:1rem">
+            ※ 근무일수는 직접 입력해주세요. 나머지는 자동 계산됩니다.
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>번호</th><th>성명</th><th>분야</th><th>근무일수</th>
+                <th>배송건수</th><th>총수익금</th><th>보조금</th>
+                <th>임금총액</th><th>소득세</th><th>주민세</th>
+                <th>활성화비</th><th>실지급액</th>
+              </tr></thead>
+              <tbody id="salary-tbody"></tbody>
+            </table>
+          </div>
+          <div class="btn-row">
+            <button class="btn" onclick="calcSalary()">🔄 재계산</button>
+            <button class="btn btn-primary" onclick="exportSalary()">⬇ 급여 엑셀 다운로드</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATEMENT -->
+    <div class="panel" id="panel-statement">
+      <div class="card">
+        <div class="card-header"><div class="card-title">📄 월말 수요처 거래명세서</div></div>
+        <div class="card-body">
+          <div id="statement-list"></div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="exportStatements()">⬇ 거래명세서 엑셀 다운로드</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAYROLL -->
+    <div class="panel" id="panel-payroll">
+      <div class="card">
+        <div class="card-header"><div class="card-title">📋 활동비 지급대장 완성</div></div>
+        <div class="card-body">
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px;margin-bottom:1rem;font-size:13px;color:#1e40af">
+            ℹ️ 마그넷서비스에서 받은 카드배송 정산 엑셀 파일을 업로드해주세요.
+          </div>
+          <div class="upload-zone">
+            <input type="file" accept=".xlsx,.xls" onchange="handleMagnet(this)">
+            <div style="font-size:2rem;margin-bottom:8px">📊</div>
+            <div style="font-weight:600;margin-bottom:4px">카드배송 정산 엑셀</div>
+            <div style="font-size:12px;color:#9aa3b2">강남시니어최종_YYYYMMDD지급.xlsx</div>
+          </div>
+          <div id="magnetResult" style="display:none;margin-top:1rem">
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr><th>성명</th><th>배송건수</th><th>총금액</th></tr></thead>
+                <tbody id="magnet-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="btn-row" style="margin-top:1rem">
+            <button class="btn btn-primary" onclick="exportPayroll()">⬇ 지급대장 엑셀 다운로드</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const ADMIN_PIN = '8866';
+let pinEntered = '';
+let allDeliveries = [];
+let magnetData = {};
+let salaryData = [];
+
+const WORKER_MASTER = [
+  {name:'김경숙', phone:'010-6700-8058', type:'카드', bank:'국민', account:'515502-01-268273', subsidy:150000},
+  {name:'김주화', phone:'010-5283-4669', type:'지하철', bank:'국민', account:'419802-84-012380', subsidy:150000},
+  {name:'김현', phone:'010-2057-7244', type:'지하철', bank:'우리', account:'134-068835-02-101', subsidy:150000},
+  {name:'김호년', phone:'010-3924-3430', type:'지하철', bank:'농협', account:'003-02-068011', subsidy:0},
+  {name:'남명현', phone:'010-4418-0066', type:'지하철', bank:'국민', account:'016702-04-241404', subsidy:150000},
+  {name:'남연순', phone:'010-4580-3928', type:'지하철', bank:'우리', account:'1002-815-498719', subsidy:150000},
+  {name:'노상운', phone:'010-5393-8313', type:'지하철', bank:'신한', account:'110-008-693056', subsidy:150000},
+  {name:'문병실', phone:'010-8423-1532', type:'카드', bank:'신한', account:'110-454-866858', subsidy:150000},
+  {name:'박규호', phone:'010-3249-2589', type:'지하철', bank:'하나', account:'322-890217-50107', subsidy:150000},
+  {name:'박용욱', phone:'010-6565-1723', type:'카드', bank:'신한', account:'110-548-874157', subsidy:150000},
+  {name:'안영권', phone:'010-2071-6424', type:'지하철', bank:'우리', account:'014-093422-02-001', subsidy:150000},
+  {name:'오승우', phone:'010-6251-6111', type:'카드', bank:'신한', account:'110-002-864040', subsidy:150000},
+  {name:'오인성', phone:'010-9144-7181', type:'카드', bank:'국민', account:'822-21-0444-213', subsidy:150000},
+  {name:'원명보', phone:'010-9387-6828', type:'지하철', bank:'국민', account:'801-24-0409-531', subsidy:150000},
+  {name:'윤기상', phone:'010-8607-2043', type:'지하철', bank:'국민', account:'553-21-0325-571', subsidy:150000},
+  {name:'윤승소', phone:'010-7736-6443', type:'지하철', bank:'국민', account:'866002-01-111167', subsidy:150000},
+  {name:'이원근', phone:'010-2377-1434', type:'지하철', bank:'국민', account:'833-21-0403-603', subsidy:150000},
+  {name:'이종화', phone:'010-3201-2413', type:'카드', bank:'우리', account:'1002-558-791731', subsidy:0},
+  {name:'이진영', phone:'010-3232-4514', type:'카드', bank:'농협', account:'366-12-118111', subsidy:150000},
+  {name:'이창만', phone:'010-8717-4575', type:'지하철', bank:'국민', account:'519702-01-007032', subsidy:150000},
+  {name:'전인석', phone:'010-5655-2901', type:'카드', bank:'우리', account:'1002-541-396633', subsidy:150000},
+  {name:'전창식', phone:'010-3461-0228', type:'지하철', bank:'국민', account:'454101-86-104964', subsidy:150000},
+  {name:'정준서', phone:'010-2720-1234', type:'카드', bank:'케이뱅크', account:'100-138-390169', subsidy:150000},
+  {name:'최성재', phone:'010-6206-7732', type:'지하철', bank:'농협', account:'483090-52-055299', subsidy:150000},
+  {name:'최용주', phone:'010-8740-3298', type:'카드', bank:'국민', account:'863-21-0075-271', subsidy:150000},
+  {name:'허기석', phone:'010-8763-4482', type:'지하철', bank:'농협', account:'352-2092-5415-23', subsidy:150000},
+];
+
+// PIN
+function pinInput(n) {
+  if (pinEntered.length >= 4) return;
+  pinEntered += n;
+  updateDots();
+  if (pinEntered.length === 4) {
+    setTimeout(checkPin, 200);
+  }
+}
+function pinClear(one) {
+  if (one) pinEntered = pinEntered.slice(0,-1);
+  else pinEntered = '';
+  updateDots();
+}
+function updateDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById('dot' + i).classList.toggle('filled', i < pinEntered.length);
+  }
+}
+function checkPin() {
+  if (pinEntered === ADMIN_PIN) {
+    document.getElementById('pinOverlay').style.display = 'none';
+    loadAllData();
+  } else {
+    document.getElementById('pinError').textContent = '잘못된 PIN입니다';
+    pinEntered = '';
+    updateDots();
+    setTimeout(() => document.getElementById('pinError').textContent = '', 2000);
+  }
+}
+
+// Navigation
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.querySelectorAll('.nav-item')[['dashboard','deliveries','salary','statement','payroll'].indexOf(name)].classList.add('active');
+  if (name === 'salary') renderSalary();
+  if (name === 'statement') renderStatements();
+  if (name === 'deliveries') renderDeliveries();
+}
+
+// Period calculation (21일~20일)
+function getPeriod(offset = 0) {
+  const now = new Date();
+  let year = now.getFullYear();
+  let month = now.getMonth();
+  const day = now.getDate();
+
+  // 현재 21일 이후면 이번달 21일~다음달 20일
+  // 20일 이전이면 지난달 21일~이번달 20일
+  if (day >= 21) {
+    month = month + offset;
+  } else {
+    month = month - 1 + offset;
+  }
+
+  if (month < 0) { month += 12; year--; }
+  if (month > 11) { month -= 12; year++; }
+
+  const start = new Date(year, month, 21);
+  const end = new Date(year, month + 1, 20);
+
+  return { start, end };
+}
+
+function formatDate(d) {
+  return d.toISOString().split('T')[0];
+}
+
+async function loadAllData() {
+  try {
+    const resp = await fetch('/api/deliveries');
+    if (resp.ok) {
+      allDeliveries = await resp.json();
+    }
+  } catch(e) {
+    // 로컬 데이터 사용
+    allDeliveries = JSON.parse(localStorage.getItem('hc_deliveries') || '[]');
+  }
+  loadDashboard();
+  updatePeriodLabel();
+}
+
+function updatePeriodLabel() {
+  const period = getPeriod(0);
+  document.getElementById('periodRange').textContent =
+    `${formatDate(period.start)} ~ ${formatDate(period.end)}`;
+  document.getElementById('periodLabel').textContent =
+    `정산기간: ${formatDate(period.start)} ~ ${formatDate(period.end)}`;
+}
+
+function getFilteredDeliveries() {
+  const offset = document.getElementById('periodSelect')?.value === 'prev' ? -1 : 0;
+  const period = getPeriod(offset);
+  return allDeliveries.filter(d => {
+    const date = new Date(d.date);
+    return date >= period.start && date <= period.end;
+  });
+}
+
+function loadDashboard() {
+  const data = getFilteredDeliveries();
+  const total = data.length;
+  const revenue = data.reduce((s, d) => s + (d.price || 0), 0);
+  const wolmal = data.filter(d => d.payment === '월말');
+  const cash = data.filter(d => d.payment !== '월말');
+
+  document.getElementById('stat-total').textContent = total.toLocaleString();
+  document.getElementById('stat-revenue').textContent = revenue.toLocaleString();
+  document.getElementById('stat-wolmal').textContent = wolmal.length;
+  document.getElementById('stat-wolmal-amt').textContent = wolmal.reduce((s,d)=>s+d.price,0).toLocaleString()+'원';
+  document.getElementById('stat-cash').textContent = cash.length;
+  document.getElementById('stat-cash-amt').textContent = cash.reduce((s,d)=>s+d.price,0).toLocaleString()+'원';
+
+  // 배송원별 집계
+  const drivers = {};
+  data.forEach(d => {
+    if (!drivers[d.driver]) drivers[d.driver] = {월말:0,현금:0,계좌:0,total:0};
+    drivers[d.driver][d.payment] = (drivers[d.driver][d.payment]||0) + 1;
+    drivers[d.driver].total += d.price||0;
+  });
+
+  document.getElementById('dashboard-tbody').innerHTML = Object.entries(drivers)
+    .sort((a,b) => b[1].total - a[1].total)
+    .map(([name, d], i) => `<tr>
+      <td><strong>${name}</strong></td>
+      <td>${(d.월말||0)+(d.현금||0)+(d.계좌||0)}건</td>
+      <td>${d.월말||0}</td><td>${d.현금||0}</td><td>${d.계좌||0}</td>
+      <td style="font-weight:700;color:#2563eb">${d.total.toLocaleString()}원</td>
+    </tr>`).join('');
+}
+
+function renderDeliveries() {
+  const data = getFilteredDeliveries();
+  document.getElementById('deliveries-tbody').innerHTML = data.map(d => `<tr>
+    <td>${d.date}</td>
+    <td><strong>${d.driver}</strong></td>
+    <td>${d.vendor||''}</td>
+    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.arrive||''}</td>
+    <td style="font-weight:600">${(d.price||0).toLocaleString()}원</td>
+    <td><span class="chip chip-${d.payment}">${d.payment}</span></td>
+    <td>${d.note||''}</td>
+  </tr>`).join('');
+}
+
+function renderSalary() {
+  const data = getFilteredDeliveries();
+  const driverStats = {};
+  data.forEach(d => {
+    if (!driverStats[d.driver]) driverStats[d.driver] = {count:0, amount:0};
+    driverStats[d.driver].count++;
+    driverStats[d.driver].amount += d.price||0;
+  });
+
+  salaryData = WORKER_MASTER.map((w, i) => {
+    const stats = w.type === '지하철' ? (driverStats[w.name]||{count:0,amount:0}) : (magnetData[w.name]||{count:0,amount:0});
+    return {...w, count: stats.count, amount: stats.amount, workdays: 0};
+  });
+
+  document.getElementById('salary-tbody').innerHTML = salaryData.map((w, i) => {
+    const totalIncome = w.amount + w.subsidy;
+    const incomeTax = Math.floor(totalIncome * 0.03 / 10) * 10;
+    const residentTax = Math.floor(incomeTax * 0.1 / 10) * 10;
+    const activation = w.subsidy > 0 ? 50000 : 0;
+    const netPay = w.amount - activation - incomeTax - residentTax;
+    return `<tr>
+      <td>${i+1}</td>
+      <td><strong>${w.name}</strong></td>
+      <td><span class="chip chip-${w.type}">${w.type}</span></td>
+      <td><input type="number" min="0" max="31" value="0" onchange="updateWorkdays(${i},this.value)"
+        style="width:55px;padding:4px 8px;border:1px solid #e2e6ea;border-radius:5px;font-size:12px;text-align:center"></td>
+      <td style="text-align:right">${w.count.toLocaleString()}</td>
+      <td style="text-align:right;font-weight:600">${w.amount.toLocaleString()}</td>
+      <td style="text-align:right">${w.subsidy.toLocaleString()}</td>
+      <td style="text-align:right">${totalIncome.toLocaleString()}</td>
+      <td style="text-align:right">${incomeTax.toLocaleString()}</td>
+      <td style="text-align:right">${residentTax.toLocaleString()}</td>
+      <td style="text-align:right">${activation.toLocaleString()}</td>
+      <td style="text-align:right;color:#059669;font-weight:700">${netPay.toLocaleString()}</td>
+    </tr>`;
+  }).join('');
+}
+
+function updateWorkdays(i, val) { if(salaryData[i]) salaryData[i].workdays = parseInt(val)||0; }
+function calcSalary() { renderSalary(); }
+
+function renderStatements() {
+  const data = getFilteredDeliveries().filter(d => d.payment === '월말');
+  const vendors = {};
+  data.forEach(d => {
+    const v = d.vendor || '미분류';
+    if (!vendors[v]) vendors[v] = [];
+    vendors[v].push(d);
+  });
+
+  document.getElementById('statement-list').innerHTML = Object.entries(vendors).map(([v, items]) => {
+    const total = items.reduce((s,d)=>s+d.price,0);
+    return `<div style="margin-bottom:1.5rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong>${v}</strong>
+        <span style="color:#2563eb;font-weight:700">${items.length}건 / ${total.toLocaleString()}원</span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>날짜</th><th>출발지</th><th>도착지</th><th>배송원</th><th>금액</th></tr></thead>
+          <tbody>${items.map(d=>`<tr>
+            <td>${d.date}</td><td>${d.depart||''}</td>
+            <td>${d.arrive||''}</td><td>${d.driver}</td>
+            <td style="font-weight:600">${(d.price||0).toLocaleString()}원</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function handleMagnet(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const wb = XLSX.read(e.target.result, {type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    magnetData = {};
+    let currentName = '';
+    for (const row of data) {
+      const name = row[3];
+      const type = row[5];
+      const qty = parseFloat(row[7]) || 0;
+      const amt = parseFloat(row[8]) || 0;
+      if (name && typeof name === 'string' && name.trim() && type !== '소계') currentName = name.trim();
+      if (type === '소계' && currentName) {
+        magnetData[currentName] = { count: Math.round(qty), amount: Math.round(amt) };
+      }
+    }
+    document.getElementById('magnet-tbody').innerHTML = Object.entries(magnetData).map(([name, d]) =>
+      `<tr><td>${name}</td><td>${d.count.toLocaleString()}</td><td>${d.amount.toLocaleString()}원</td></tr>`
+    ).join('');
+    document.getElementById('magnetResult').style.display = 'block';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function exportStatements() {
+  const wb = XLSX.utils.book_new();
+  const data = getFilteredDeliveries().filter(d => d.payment === '월말');
+  const vendors = {};
+  data.forEach(d => {
+    const v = d.vendor || '미분류';
+    if (!vendors[v]) vendors[v] = [];
+    vendors[v].push(d);
+  });
+  Object.entries(vendors).forEach(([v, items]) => {
+    const total = items.reduce((s,d)=>s+d.price,0);
+    const rows = [
+      [`거래명세서 - ${v}`], [],
+      ['날짜','출발지','도착지','배송원','금액'],
+      ...items.map(d => [d.date, d.depart||'', d.arrive||'', d.driver, d.price||0]),
+      [], ['','','','합계', total]
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), v.slice(0,28));
+  });
+  XLSX.writeFile(wb, `해피콜_거래명세서_${new Date().toLocaleDateString('ko-KR').replace(/\./g,'').replace(/ /g,'')}.xlsx`);
+}
+
+function exportSalary() {
+  const wb = XLSX.utils.book_new();
+  const headers = ['번호','성명','전화번호','분야','근무일수','보조금','배송건수','총수익금','임금총액','활성화비','소득세','주민세','원천세계','실지급액','은행명','계좌번호'];
+  const rows = salaryData.map((w,i) => {
+    const totalIncome = w.amount + w.subsidy;
+    const incomeTax = Math.floor(totalIncome * 0.03 / 10) * 10;
+    const residentTax = Math.floor(incomeTax * 0.1 / 10) * 10;
+    const activation = w.subsidy > 0 ? 50000 : 0;
+    const netPay = w.amount - activation - incomeTax - residentTax;
+    return [i+1,w.name,w.phone,w.type,w.workdays,w.subsidy,w.count,w.amount,totalIncome,activation,incomeTax,residentTax,incomeTax+residentTax,netPay,w.bank,w.account];
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([headers,...rows]), '지급대장');
+  XLSX.writeFile(wb, `해피콜_지급대장_${new Date().toLocaleDateString('ko-KR').replace(/\./g,'').replace(/ /g,'')}.xlsx`);
+}
+
+function exportPayroll() { exportSalary(); }
+</script>
+</body>
+</html>
