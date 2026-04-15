@@ -447,53 +447,27 @@ function parseDepartInfo() {
 
 function openKakaoMap() {
   const arrive = document.getElementById('arriveAddr').value.trim();
-  const depart = currentDelivery.departAddr || '';
   if (!arrive) { alert('도착지 주소를 먼저 입력해주세요!'); return; }
-
-  // 카카오맵 길찾기 (주소 → 좌표 변환 후 길찾기)
-  const geocoder = new kakao.maps.services.Geocoder();
-  
-  geocoder.addressSearch(arrive, function(result, status) {
-    if (status === kakao.maps.services.Status.OK) {
-      const destLat = result[0].y;
-      const destLng = result[0].x;
-      const destName = encodeURIComponent(arrive);
-      
-      if (depart) {
-        geocoder.addressSearch(depart, function(r2, s2) {
-          let url;
-          if (s2 === kakao.maps.services.Status.OK) {
-            const spLat = r2[0].y;
-            const spLng = r2[0].x;
-            url = `https://map.kakao.com/link/from/${encodeURIComponent(depart)},${spLat},${spLng}/to/${destName},${destLat},${destLng}`;
-          } else {
-            url = `https://map.kakao.com/link/to/${destName},${destLat},${destLng}`;
-          }
-          window.open(url, '_blank');
-        });
-      } else {
-        const url = `https://map.kakao.com/link/to/${destName},${destLat},${destLng}`;
-        window.open(url, '_blank');
-      }
-    } else {
-      // 좌표 변환 실패시 그냥 검색
-      window.open(`https://map.kakao.com/link/search/${encodeURIComponent(arrive)}`, '_blank');
-    }
-  });
+  // 카카오맵 앱으로 목적지 검색
+  const appUrl = `kakaomap://look?p=${encodeURIComponent(arrive)}`;
+  const webUrl = `https://map.kakao.com/link/search/${encodeURIComponent(arrive)}`;
+  // 앱 시도 후 웹으로 fallback
+  const link = document.createElement('a');
+  link.href = appUrl;
+  link.click();
+  setTimeout(() => { window.location.href = webUrl; }, 1500);
 }
 
 function openNaverMap() {
   const arrive = document.getElementById('arriveAddr').value.trim();
-  const depart = currentDelivery.departAddr || '';
   if (!arrive) { alert('도착지 주소를 먼저 입력해주세요!'); return; }
-  
-  if (depart) {
-    const url = `https://map.naver.com/p/directions/-/-/${encodeURIComponent(arrive)}/-/transit?c=15,0,0,0,dh`;
-    window.open(url, '_blank');
-  } else {
-    const url = `https://map.naver.com/p/search/${encodeURIComponent(arrive)}`;
-    window.open(url, '_blank');
-  }
+  // 네이버지도 앱으로 목적지 검색
+  const appUrl = `nmap://search?query=${encodeURIComponent(arrive)}&appname=com.happycall.delivery`;
+  const webUrl = `https://map.naver.com/p/search/${encodeURIComponent(arrive)}`;
+  const link = document.createElement('a');
+  link.href = appUrl;
+  link.click();
+  setTimeout(() => { window.location.href = webUrl; }, 1500);
 }
 
 function showCompleteModal() {
