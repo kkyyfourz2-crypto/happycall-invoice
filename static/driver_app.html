@@ -240,12 +240,14 @@ textarea { resize: none; }
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-      <button class="btn btn-kakao" onclick="openKakaoMap()">
+      <a id="kakaoMapLink" href="#" target="_blank" onclick="updateKakaoLink(event)" 
+        class="btn btn-kakao" style="text-decoration:none;justify-content:center">
         🗺 카카오맵
-      </button>
-      <button class="btn" style="background:#03C75A;color:white;border-color:#03C75A" onclick="openNaverMap()">
+      </a>
+      <a id="naverMapLink" href="#" target="_blank" onclick="updateNaverLink(event)"
+        class="btn" style="background:#03C75A;color:white;border-color:#03C75A;text-decoration:none;justify-content:center">
         🗺 네이버지도
-      </button>
+      </a>
     </div>
     <button class="btn btn-green" onclick="showCompleteModal()" style="width:100%;margin-bottom:14px;font-size:16px">
       ✅ 배송 완료
