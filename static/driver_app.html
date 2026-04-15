@@ -193,6 +193,7 @@ textarea { resize: none; }
 
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
 </style>
+<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=e4c948a11391b9648db4b5edb43e2b24&libraries=services"></script>
 </head>
 <body>
 
@@ -238,14 +239,17 @@ textarea { resize: none; }
       <textarea id="arriveAddr" rows="3" placeholder="도착지 주소 입력"></textarea>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
       <button class="btn btn-kakao" onclick="openKakaoMap()">
         🗺 카카오맵
       </button>
-      <button class="btn btn-primary" onclick="showCompleteModal()">
-        ✓ 배송 완료
+      <button class="btn" style="background:#03C75A;color:white;border-color:#03C75A" onclick="openNaverMap()">
+        🗺 네이버지도
       </button>
     </div>
+    <button class="btn btn-green" onclick="showCompleteModal()" style="width:100%;margin-bottom:14px;font-size:16px">
+      ✅ 배송 완료
+    </button>
   </div>
 
   <div class="card" id="todayCard">
@@ -444,16 +448,52 @@ function parseDepartInfo() {
 function openKakaoMap() {
   const arrive = document.getElementById('arriveAddr').value.trim();
   const depart = currentDelivery.departAddr || '';
-
   if (!arrive) { alert('도착지 주소를 먼저 입력해주세요!'); return; }
 
-  // 카카오맵 길찾기 URL
-  const url = `kakaomap://route?sp=${encodeURIComponent(depart)}&ep=${encodeURIComponent(arrive)}&by=PUBLICTRANSIT`;
-  const webUrl = `https://map.kakao.com/link/to/${encodeURIComponent(arrive)}`;
+  // 카카오맵 길찾기 (주소 → 좌표 변환 후 길찾기)
+  const geocoder = new kakao.maps.services.Geocoder();
+  
+  geocoder.addressSearch(arrive, function(result, status) {
+    if (status === kakao.maps.services.Status.OK) {
+      const destLat = result[0].y;
+      const destLng = result[0].x;
+      const destName = encodeURIComponent(arrive);
+      
+      if (depart) {
+        geocoder.addressSearch(depart, function(r2, s2) {
+          let url;
+          if (s2 === kakao.maps.services.Status.OK) {
+            const spLat = r2[0].y;
+            const spLng = r2[0].x;
+            url = `https://map.kakao.com/link/from/${encodeURIComponent(depart)},${spLat},${spLng}/to/${destName},${destLat},${destLng}`;
+          } else {
+            url = `https://map.kakao.com/link/to/${destName},${destLat},${destLng}`;
+          }
+          window.open(url, '_blank');
+        });
+      } else {
+        const url = `https://map.kakao.com/link/to/${destName},${destLat},${destLng}`;
+        window.open(url, '_blank');
+      }
+    } else {
+      // 좌표 변환 실패시 그냥 검색
+      window.open(`https://map.kakao.com/link/search/${encodeURIComponent(arrive)}`, '_blank');
+    }
+  });
+}
 
-  // 앱 먼저 시도, 안되면 웹으로
-  window.location.href = url;
-  setTimeout(() => { window.open(webUrl, '_blank'); }, 1500);
+function openNaverMap() {
+  const arrive = document.getElementById('arriveAddr').value.trim();
+  const depart = currentDelivery.departAddr || '';
+  if (!arrive) { alert('도착지 주소를 먼저 입력해주세요!'); return; }
+  
+  if (depart) {
+    const url = `https://map.naver.com/p/directions/-/-/${encodeURIComponent(arrive)}/-/transit?c=15,0,0,0,dh`;
+    window.open(url, '_blank');
+  } else {
+    const url = `https://map.naver.com/p/search/${encodeURIComponent(arrive)}`;
+    window.open(url, '_blank');
+  }
 }
 
 function showCompleteModal() {
